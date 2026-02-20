@@ -1,3 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+body {
+  background-color: #fdfcf7;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 30px,
+    #e8e8e8 31px
+  );
+  font-family: 'Inter', sans-serif;
+}
+
+.primary-btn {
+  @apply bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition;
+}
+
+.secondary-btn {
+  @apply bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition;
+}
+
+.card {
+  @apply bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition;
+}

@@ -1,212 +1,153 @@
+import { useEffect, useState } from "react";
+import { supabase } from "../supabaseClient";
 import { useNavigate } from "react-router-dom";
 
-export default function Home() {
+import nfsuImg from "../assets/colleges/nfsu.jpg";
+import nirmaImg from "../assets/colleges/nirma.jpg";
+import adaniImg from "../assets/colleges/adani.jpg";
+
+const Home = () => {
   const navigate = useNavigate();
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
+  }, []);
 
   const colleges = [
-    {
-      name: "NFSU Gandhinagar",
-      image: "https://picsum.photos/600/400?random=1",
-    },
-    {
-      name: "Adani University",
-      image: "https://picsum.photos/600/400?random=2",
-    },
-    {
-      name: "Nirma University",
-      image: "https://picsum.photos/600/400?random=3",
-    },
+    { name: "NFSU", img: nfsuImg },
+    { name: "Nirma", img: nirmaImg },
+    { name: "Adani", img: adaniImg },
   ];
 
   return (
-    <div
-      className="min-h-screen px-10 py-16"
-      style={{
-        backgroundColor: "#f6f1e6",
-        backgroundImage:
-          "repeating-linear-gradient(to bottom, transparent, transparent 28px, #d8d2c4 29px)",
-      }}
-    >
-      {/* ================= HERO ================= */}
-      <div className="text-center mb-20">
-        <h1 className="text-5xl font-bold text-green-700 mb-4">
-          ProxyStore
-        </h1>
+    <div style={{ textAlign: "center", padding: 60 }}>
+      
+      {/* Hero Section */}
+      <h1 style={{ color: "#2f855a", fontSize: 48 }}>
+        🌿 ProxyStore
+      </h1>
 
-        <p className="text-xl text-teal-600 mb-3">
-          Campus Infrastructure Platform
-        </p>
+      <p style={{ fontSize: 18, marginTop: 10 }}>
+        Campus Marketplace for Students
+      </p>
 
-        <p className="text-2xl text-orange-500 italic mb-6">
-          "Attendance aapki, deals humari"
-        </p>
+      <p style={{ marginTop: 5, color: "gray" }}>
+        Buy • Sell • Chat • All inside your campus
+      </p>
 
-        <p className="max-w-xl mx-auto text-gray-700 mb-8">
-          Buy, sell, and discover student deals safely across campuses.
-        </p>
-
+      <div style={{ marginTop: 40 }}>
         <button
           onClick={() => navigate("/marketplace")}
-          className="bg-green-600 text-white px-8 py-3 rounded-full shadow hover:bg-green-700"
+          style={{
+            background: "#2f855a",
+            color: "white",
+            padding: "14px 28px",
+            borderRadius: 12,
+            border: "none",
+            marginRight: 15,
+            fontSize: 16,
+            cursor: "pointer",
+          }}
         >
-          Explore Marketplace
+          Enter Marketplace
         </button>
-      </div>
 
-      {/* ================= COLLEGES ================= */}
-      <h2 className="text-3xl font-semibold text-green-700 mb-8">
-        Featured Colleges
-      </h2>
-
-      <div className="grid md:grid-cols-3 gap-6 mb-20">
-        {colleges.map((college, index) => (
-          <div
-            key={index}
-            className="bg-white rounded-xl shadow hover:shadow-lg transition cursor-pointer overflow-hidden"
-            onClick={() =>
-              navigate(
-                `/marketplace?college=${encodeURIComponent(
-                  college.name
-                )}`
-              )
-            }
+        {!user && (
+          <button
+            onClick={() => navigate("/auth")}
+            style={{
+              background: "#dd6b20",
+              color: "white",
+              padding: "14px 28px",
+              borderRadius: 12,
+              border: "none",
+              fontSize: 16,
+              cursor: "pointer",
+            }}
           >
-            <img
-              src={college.image}
-              className="h-40 w-full object-cover"
-            />
-            <div className="p-4">
-              <h3 className="font-bold">{college.name}</h3>
-              <p className="text-sm text-gray-500">
-                View live student listings
-              </p>
+            Login / Sign Up
+          </button>
+        )}
+      </div>
+
+      {/* Featured Colleges */}
+      <div style={{ marginTop: 100 }}>
+        <h3 style={{ marginBottom: 40 }}>Featured Colleges</h3>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: 40,
+            flexWrap: "wrap",
+          }}
+        >
+          {colleges.map((college) => (
+            <div
+              key={college.name}
+              onClick={() =>
+                navigate(`/marketplace?college=${college.name}`)
+              }
+              style={{
+                width: 280,
+                borderRadius: 20,
+                overflow: "hidden",
+                cursor: "pointer",
+                boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+                transition: "transform 0.3s ease",
+                background: "white",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.transform = "scale(1.05)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.transform = "scale(1)")
+              }
+            >
+              <img
+                src={college.img}
+                alt={college.name}
+                style={{
+                  width: "100%",
+                  height: 180,
+                  objectFit: "cover",
+                }}
+              />
+
+              <div style={{ padding: 20 }}>
+                <h4
+                  style={{
+                    color: "#dd6b20",
+                    marginBottom: 10,
+                  }}
+                >
+                  {college.name}
+                </h4>
+
+                <p style={{ fontSize: 14, color: "gray" }}>
+                  Explore student listings
+                </p>
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      {/* ================= BULK ORDERS ================= */}
-      <h2 className="text-3xl font-semibold text-green-700 mb-6">
-        Bulk Orders & Group Buys
-      </h2>
-
-      <div className="grid md:grid-cols-3 gap-6 mb-20">
-        {[
-          "Hostel Water Cans",
-          "Lab Coats Group Buy",
-          "Printed Event T-Shirts",
-        ].map((item, i) => (
-          <div key={i} className="bg-white p-6 rounded-xl shadow">
-            <h3 className="font-bold">{item}</h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Join students to unlock discounts.
-            </p>
-            <button className="mt-4 bg-orange-400 text-white px-4 py-2 rounded">
-              Join Bulk Order
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* ================= FLAT FOR RENT ================= */}
-      <h2 className="text-3xl font-semibold text-green-700 mb-6">
-        Flats & Rooms Near Campus
-      </h2>
-
-      <div className="grid md:grid-cols-3 gap-6 mb-20">
-        {[
-          {
-            title: "2BHK near Nirma University",
-            price: "₹8000/month",
-          },
-          {
-            title: "1RK near NFSU",
-            price: "₹5500/month",
-          },
-          {
-            title: "PG near Adani University",
-            price: "₹6000/month",
-          },
-        ].map((flat, i) => (
-          <div key={i} className="bg-white p-6 rounded-xl shadow">
-            <h3 className="font-bold">{flat.title}</h3>
-            <p className="text-green-700 font-semibold">
-              {flat.price}
-            </p>
-            <button className="mt-4 bg-teal-600 text-white px-4 py-2 rounded">
-              Contact Owner
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* ================= RETAIL STORES ================= */}
-      <h2 className="text-3xl font-semibold text-green-700 mb-6">
-        Retail Stores Near Campus
-      </h2>
-
-      <div className="grid md:grid-cols-3 gap-6 mb-20">
-        {[
-          "Campus Stationery",
-          "TechWorld Electronics",
-          "Print Hub",
-        ].map((store, i) => (
-          <div key={i} className="bg-white p-6 rounded-xl shadow">
-            <h3 className="font-bold">{store}</h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Special student discounts available.
-            </p>
-            <button className="mt-4 bg-green-600 text-white px-4 py-2 rounded">
-              Visit Store
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* ================= EVENTS ================= */}
-      <h2 className="text-3xl font-semibold text-green-700 mb-6">
-        Campus Events & Concerts
-      </h2>
-
-      <div className="grid md:grid-cols-3 gap-6 mb-20">
-        {[
-          "Live DJ Night - Nirma",
-          "Tech Fest - Adani University",
-          "Sports Tournament - NFSU",
-        ].map((event, i) => (
-          <div key={i} className="bg-white p-6 rounded-xl shadow">
-            <h3 className="font-bold">{event}</h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Book tickets directly via ProxyStore.
-            </p>
-            <button className="mt-4 bg-orange-500 text-white px-4 py-2 rounded">
-              Book Tickets
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {/* ================= AMBASSADOR ================= */}
-      <div className="bg-white p-10 rounded-xl shadow text-center mb-20">
-        <h2 className="text-3xl font-semibold text-green-700 mb-4">
-          Become a Campus Ambassador
-        </h2>
-        <p className="text-gray-600 mb-6">
-          Lead ProxyStore in your campus. Earn incentives,
-          certificates and recognition.
-        </p>
-        <button className="bg-green-700 text-white px-8 py-3 rounded-full">
-          Apply Now
-        </button>
-      </div>
-
-      {/* ================= FOOTER ================= */}
-      <footer className="text-center text-gray-600 text-sm border-t pt-6">
-        <p className="font-semibold text-green-700">
-          ProxyStore
-        </p>
-        <p>Built by students, for students</p>
-      </footer>
     </div>
   );
-}
+};
+
+export default Home;

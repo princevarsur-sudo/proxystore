@@ -1,47 +1,123 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../supabase";
 
-export default function ListingDetails() {
+const ListingDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+
   const [listing, setListing] = useState<any>(null);
+  const [images, setImages] = useState<any[]>([]);
 
   useEffect(() => {
     fetchListing();
   }, []);
 
-  async function fetchListing() {
+  const fetchListing = async () => {
     const { data } = await supabase
       .from("listings")
       .select("*")
       .eq("id", id)
       .single();
 
-    if (data) setListing(data);
-  }
+    if (!data) return;
 
-  if (!listing) return <p className="p-8">Loading...</p>;
+    setListing(data);
+
+    const { data: imgs } = await supabase
+      .from("listing_images")
+      .select("*")
+      .eq("listing_id", data.id);
+
+    setImages(imgs || []);
+  };
+
+  const handleStartChat = async () => {
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData.user;
+
+    if (!user) {
+      navigate("/login");
+      return;
+    }
+
+    if (!listing) return;
+
+    if (listing.user_id === user.id) {
+      alert("You cannot chat with your own listing.");
+      return;
+    }
+
+    // 🔎 Check if conversation already exists
+    const { data: existing } = await supabase
+      .from("conversations")
+      .select("*")
+      .eq("listing_id", listing.id)
+      .eq("buyer_id", user.id)
+      .eq("seller_id", listing.user_id)
+      .maybeSingle();
+
+    if (existing) {
+      navigate(`/chat/${existing.id}`);
+      return;
+    }
+
+    // ➕ Create new conversation
+    const { data: newConv, error } = await supabase
+      .from("conversations")
+      .insert([
+        {
+          listing_id: listing.id,
+          buyer_id: user.id,
+          seller_id: listing.user_id,
+        },
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      alert("Error creating conversation");
+      return;
+    }
+
+    navigate(`/chat/${newConv.id}`);
+  };
+
+  if (!listing) return <p>Loading...</p>;
 
   return (
-    <div className="p-8 max-w-3xl mx-auto">
-      <img
-        src={listing.image_url}
-        className="w-full h-80 object-cover rounded-xl"
-      />
+    <div style={{ padding: 30 }}>
+      <h2>{listing.title}</h2>
+      <p>₹ {listing.price}</p>
+      <p>{listing.description}</p>
 
-      <h2 className="text-3xl font-bold mt-6">{listing.title}</h2>
-      <p className="text-green-600 text-xl font-semibold">
-        ₹{listing.price}
-      </p>
+      <div style={{ display: "flex", gap: 10 }}>
+        {images.map((img) => (
+          <img
+            key={img.id}
+            src={img.image_url}
+            width={150}
+            style={{ borderRadius: 8 }}
+          />
+        ))}
+      </div>
 
-      <p className="mt-4">{listing.description}</p>
-      <p className="mt-2 text-sm text-gray-500">
-        📍 {listing.address}
-      </p>
-
-      <button className="mt-6 bg-teal-600 text-white px-6 py-2 rounded">
-        Contact Seller: {listing.contact}
+      <button
+        onClick={handleStartChat}
+        style={{
+          marginTop: 20,
+          padding: "10px 20px",
+          backgroundColor: "#2e7d32",
+          color: "white",
+          border: "none",
+          borderRadius: 6,
+          cursor: "pointer",
+        }}
+      >
+        Chat with Seller
       </button>
     </div>
   );
-}
+};
+
+export default ListingDetails;

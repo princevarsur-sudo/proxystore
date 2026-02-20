@@ -1,179 +1,174 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../supabaseClient";
+import { useNavigate } from "react-router-dom";
 
-interface Listing {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  college: string;
-  address: string;
-  image_url: string;
-}
+const Marketplace = () => {
+  const navigate = useNavigate();
 
-export default function Marketplace() {
-  const [listings, setListings] = useState<Listing[]>([]);
+  const [college, setCollege] = useState("NFSU");
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("");
+  const [description, setDescription] = useState("");
+  const [address, setAddress] = useState("");
   const [contact, setContact] = useState("");
-  const [college, setCollege] = useState("");
-  const [image, setImage] = useState<File | null>(null);
+  const [images, setImages] = useState<FileList | null>(null);
+  const [listings, setListings] = useState<any[]>([]);
 
   useEffect(() => {
     fetchListings();
-  }, []);
+  }, [college]);
 
-  async function fetchListings() {
-    const { data, error } = await supabase
+  const fetchListings = async () => {
+    const { data } = await supabase
       .from("listings")
-      .select("*")
+      .select(`
+        *,
+        listing_images (
+          image_url
+        )
+      `)
+      .eq("college", college)
       .order("created_at", { ascending: false });
 
-    if (!error && data) {
-      setListings(data);
-    }
-  }
+    setListings(data || []);
+  };
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  const handlePost = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-    if (!image) {
-      alert("Please upload image");
+    if (!user) {
+      alert("Login first");
       return;
     }
 
-    // Upload image to Supabase storage
-    const fileName = `${Date.now()}-${image.name}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("listing-images")
-      .upload(fileName, image);
-
-    if (uploadError) {
-      alert("Image upload failed");
-      return;
-    }
-
-    const { data: publicUrlData } = supabase.storage
-      .from("listing-images")
-      .getPublicUrl(fileName);
-
-    const imageUrl = publicUrlData.publicUrl;
-
-    // Insert into database
-    const { error } = await supabase.from("listings").insert([
-      {
+    const { data: listing } = await supabase
+      .from("listings")
+      .insert({
+        user_id: user.id,
         title,
-        description: `Contact: ${contact}`,
-        price: Number(price),
-        category: "General",
-        image_url: imageUrl,
-        seller_id: null,
+        price,
+        description,
         college,
-        address: "Student Listing",
-        status: "available",
-      },
-    ]);
+        address,
+        contact,
+      })
+      .select()
+      .single();
 
-    if (error) {
-      alert(error.message);
-      return;
+    if (images && listing) {
+      for (let i = 0; i < images.length; i++) {
+        const file = images[i];
+        const filePath = `${listing.id}/${file.name}`;
+
+        await supabase.storage
+          .from("listing-images")
+          .upload(filePath, file);
+
+        const { data } = supabase.storage
+          .from("listing-images")
+          .getPublicUrl(filePath);
+
+        await supabase.from("listing_images").insert({
+          listing_id: listing.id,
+          image_url: data.publicUrl,
+        });
+      }
     }
-
-    setTitle("");
-    setPrice("");
-    setContact("");
-    setCollege("");
-    setImage(null);
 
     fetchListings();
-  }
+  };
 
   return (
-    <div className="min-h-screen p-8 notebook-bg">
-      <h1 className="text-3xl font-bold text-green-700 mb-6">
-        Campus Marketplace
-      </h1>
+    <div style={{ padding: 40 }}>
+      <h1 style={{ color: "#2f855a" }}>🌿 ProxyStore Marketplace</h1>
 
-      {/* FORM */}
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-6 rounded-xl shadow-md mb-10"
-      >
-        <input
-          type="text"
-          placeholder="Product Name"
-          className="w-full border p-2 mb-3 rounded"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          required
-        />
+      <div className="card" style={{ marginBottom: 40 }}>
+        <h2 style={{ color: "#dd6b20" }}>Post Your Product</h2>
 
-        <input
-          type="number"
-          placeholder="Price"
-          className="w-full border p-2 mb-3 rounded"
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          required
-        />
+        <select value={college} onChange={(e) => setCollege(e.target.value)}>
+          <option>NFSU</option>
+          <option>Nirma</option>
+          <option>Adani</option>
+        </select>
 
-        <input
-          type="text"
-          placeholder="Your Contact Number"
-          className="w-full border p-2 mb-3 rounded"
-          value={contact}
-          onChange={(e) => setContact(e.target.value)}
-          required
-        />
-
-        <input
-          type="text"
-          placeholder="College Name"
-          className="w-full border p-2 mb-3 rounded"
-          value={college}
-          onChange={(e) => setCollege(e.target.value)}
-          required
-        />
-
-        <input
-          type="file"
-          className="w-full border p-2 mb-4 rounded"
-          onChange={(e) =>
-            setImage(e.target.files ? e.target.files[0] : null)
-          }
-          required
-        />
+        <br /><br />
+        <input placeholder="Product Name" onChange={(e) => setTitle(e.target.value)} />
+        <br /><br />
+        <input placeholder="Price" onChange={(e) => setPrice(e.target.value)} />
+        <br /><br />
+        <textarea placeholder="Description" onChange={(e) => setDescription(e.target.value)} />
+        <br /><br />
+        <input placeholder="Address" onChange={(e) => setAddress(e.target.value)} />
+        <br /><br />
+        <input placeholder="Contact (Optional)" onChange={(e) => setContact(e.target.value)} />
+        <br /><br />
+        <input type="file" multiple onChange={(e) => setImages(e.target.files)} />
+        <br /><br />
 
         <button
-          type="submit"
-          className="bg-green-600 text-white px-4 py-2 rounded-lg"
+          style={{
+            background: "#2f855a",
+            color: "white",
+            padding: "10px 20px",
+            borderRadius: 10,
+            border: "none",
+          }}
+          onClick={handlePost}
         >
-          Post Listing
+          Post Now
         </button>
-      </form>
-
-      {/* LISTINGS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {listings.map((item) => (
-          <div
-            key={item.id}
-            className="bg-white rounded-xl shadow-md overflow-hidden"
-          >
-            <img
-              src={item.image_url}
-              alt={item.title}
-              className="w-full h-48 object-cover"
-            />
-            <div className="p-4">
-              <h2 className="text-lg font-semibold">{item.title}</h2>
-              <p className="text-green-700 font-bold">₹{item.price}</p>
-              <p className="text-sm text-gray-600">{item.college}</p>
-              <p className="text-sm text-gray-500">{item.description}</p>
-            </div>
-          </div>
-        ))}
       </div>
+
+      <h2 style={{ color: "#2f855a" }}>{college} Listings</h2>
+
+      {listings.map((item) => (
+        <div
+          key={item.id}
+          className="card"
+          style={{
+            display: "flex",
+            gap: 20,
+            marginBottom: 20,
+            alignItems: "center",
+          }}
+        >
+          {item.listing_images?.length > 0 && (
+            <img
+              src={item.listing_images[0].image_url}
+              style={{
+                width: 140,
+                height: 140,
+                objectFit: "cover",
+                borderRadius: 12,
+              }}
+            />
+          )}
+
+          <div style={{ flex: 1 }}>
+            <h3>{item.title}</h3>
+            <p style={{ color: "#dd6b20", fontWeight: "bold" }}>
+              ₹ {item.price}
+            </p>
+
+            <button
+              style={{
+                background: "#2f855a",
+                color: "white",
+                padding: "6px 14px",
+                borderRadius: 8,
+                border: "none",
+              }}
+              onClick={() => navigate(`/listing/${item.id}`)}
+            >
+              View
+            </button>
+          </div>
+        </div>
+      ))}
     </div>
   );
-}
+};
+
+export default Marketplace;
