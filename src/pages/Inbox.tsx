@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 
 export default function Inbox() {
   const [conversations, setConversations] = useState<any[]>([]);
-  const [, setUser] = useState<any>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,7 +18,6 @@ export default function Inbox() {
       return;
     }
 
-    setUser(data.user);
     fetchConversations(data.user.id);
   }
 
